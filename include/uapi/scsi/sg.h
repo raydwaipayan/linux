@@ -99,6 +99,18 @@ typedef struct sg_io_hdr {
 #define SG_FLAG_Q_AT_TAIL 0x10
 #define SG_FLAG_Q_AT_HEAD 0x20
 
+/*
+ * Flags used by ioctl(SG_IOSUBMIT) [abbrev: SG_IOS] and ioctl(SG_IORECEIVE)
+ * [abbrev: SG_IOR] OR-ed into sg_io_v4::flags. The sync v4 interface uses
+ * ioctl(SG_IO) and can take these new flags, as can the v3 interface.
+ * These flags apply for SG_IOS unless otherwise noted. May be OR-ed together.
+ */
+#define SGV4_FLAG_DIRECT_IO SG_FLAG_DIRECT_IO
+#define SGV4_FLAG_MMAP_IO SG_FLAG_MMAP_IO
+#define SGV4_FLAG_Q_AT_TAIL SG_FLAG_Q_AT_TAIL
+#define SGV4_FLAG_Q_AT_HEAD SG_FLAG_Q_AT_HEAD
+#define SGV4_FLAG_IMMED 0x400 /* for polling with SG_IOR, ignored in SG_IOS */
+
 /* Output (potentially OR-ed together) in v3::info or v4::info field */
 #define SG_INFO_OK_MASK 0x1
 #define SG_INFO_OK 0x0		/* no sense, host nor driver "noise" */
@@ -134,7 +146,6 @@ typedef struct sg_req_info {	/* used by SG_GET_REQUEST_TABLE ioctl() */
 	/* sg_io_owned set imples synchronous, clear implies asynchronous */
 	char sg_io_owned;/* 0 -> complete with read(), 1 -> owned by SG_IO */
 	char problem;	/* 0 -> no problem detected, 1 -> error to report */
-	/* If SG_CTL_FLAGM_TAG_FOR_PACK_ID set on fd then next field is tag */
 	int pack_id;	/* pack_id, in v4 driver may be tag instead */
 	void __user *usr_ptr;	/* user provided pointer in v3+v4 interface */
 	unsigned int duration;
@@ -162,6 +173,13 @@ typedef struct sg_req_info {	/* used by SG_GET_REQUEST_TABLE ioctl() */
 
 #define SG_SET_RESERVED_SIZE 0x2275  /* request new reserved buffer size */
 #define SG_GET_RESERVED_SIZE 0x2272  /* actual size of reserved buffer */
+
+/*
+ * Historically the scsi/sg driver has used 0x22 as it ioctl base number.
+ * Add a define for that value and use it for several new ioctls added in
+ * version 4.0.01 sg driver and later.
+ */
+#define SG_IOCTL_MAGIC_NUM 0x22
 
 /* The following ioctl has a 'sg_scsi_id_t *' object as its 3rd argument. */
 #define SG_GET_SCSI_ID 0x2276   /* Yields fd's bus, chan, dev, lun + type */
@@ -318,6 +336,23 @@ struct sg_header {
  * this file descriptor (v1 and v2 interface only)
  */
 #define SG_NEXT_CMD_LEN 0x2283
+
+/*
+ * New ioctls to replace async (non-blocking) write()/read() interface.
+ * Present in version 4 and later of the sg driver [>20190427]. The
+ * SG_IOSUBMIT and SG_IORECEIVE ioctls accept the sg_v4 interface based on
+ * struct sg_io_v4 found in <include/uapi/linux/bsg.h>. These objects are
+ * passed by a pointer in the third argument of the ioctl.
+ *
+ * Data may be transferred both from the user space to the driver by these
+ * ioctls. Hence the _IOWR macro is used here to generate the ioctl number
+ * rather than _IOW or _IOR.
+ */
+/* Submits a v4 interface object to driver, optionally receive tag back */
+#define SG_IOSUBMIT _IOWR(SG_IOCTL_MAGIC_NUM, 0x41, struct sg_io_v4)
+
+/* Gives some v4 identifying info to driver, receives associated response */
+#define SG_IORECEIVE _IOWR(SG_IOCTL_MAGIC_NUM, 0x42, struct sg_io_v4)
 
 /* command queuing is always on when the v3 or v4 interface is used */
 #define SG_DEF_COMMAND_Q 0
