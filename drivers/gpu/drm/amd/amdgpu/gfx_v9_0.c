@@ -4027,7 +4027,8 @@ static int gfx_v9_0_hw_fini(void *handle)
 	}
 
 	gfx_v9_0_cp_enable(adev, false);
-	adev->gfx.rlc.funcs->stop(adev);
+	if (!adev->in_s0ix)
+		adev->gfx.rlc.funcs->stop(adev);
 
 	return 0;
 }
