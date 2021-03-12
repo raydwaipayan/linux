@@ -482,16 +482,6 @@ struct btrfs_discard_ctl {
 	atomic64_t discard_bytes_saved;
 };
 
-/* delayed seq elem */
-struct seq_list {
-	struct list_head list;
-	u64 seq;
-};
-
-#define SEQ_LIST_INIT(name)	{ .list = LIST_HEAD_INIT((name).list), .seq = 0 }
-
-#define SEQ_LAST	((u64)-1)
-
 enum btrfs_orphan_cleanup_state {
 	ORPHAN_CLEANUP_STARTED	= 1,
 	ORPHAN_CLEANUP_DONE	= 2,
@@ -572,6 +562,9 @@ enum {
 
 	/* Indicate that we can't trust the free space tree for caching yet */
 	BTRFS_FS_FREE_SPACE_TREE_UNTRUSTED,
+
+	/* Indicate whether there are any tree modification log users. */
+	BTRFS_FS_TREE_MOD_LOG_USERS,
 
 #if BITS_PER_LONG == 32
 	/* Indicate if we have error/warn message printed for 32bit system */
@@ -2933,13 +2926,6 @@ static inline void btrfs_clear_sb_rdonly(struct super_block *sb)
 	sb->s_flags &= ~SB_RDONLY;
 	clear_bit(BTRFS_FS_STATE_RO, &btrfs_sb(sb)->fs_state);
 }
-
-/* tree mod log functions from ctree.c */
-u64 btrfs_get_tree_mod_seq(struct btrfs_fs_info *fs_info,
-			   struct seq_list *elem);
-void btrfs_put_tree_mod_seq(struct btrfs_fs_info *fs_info,
-			    struct seq_list *elem);
-int btrfs_old_root_level(struct btrfs_root *root, u64 time_seq);
 
 /* root-item.c */
 int btrfs_add_root_ref(struct btrfs_trans_handle *trans, u64 root_id,
