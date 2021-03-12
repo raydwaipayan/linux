@@ -2434,6 +2434,9 @@ static int psp_suspend(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 	struct psp_context *psp = &adev->psp;
 
+	if (adev->in_s0ix)
+		return 0;
+
 	if (adev->gmc.xgmi.num_physical_nodes > 1 &&
 	    psp->xgmi_context.initialized == 1) {
 		ret = psp_xgmi_terminate(psp);
