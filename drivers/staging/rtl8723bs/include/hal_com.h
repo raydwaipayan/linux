@@ -165,10 +165,10 @@ enum{
 	UP_LINK,
 	DOWN_LINK,
 };
-typedef enum _RT_MEDIA_STATUS {
+enum RT_MEDIA_STATUS {
 	RT_MEDIA_DISCONNECT = 0,
 	RT_MEDIA_CONNECT       = 1
-} RT_MEDIA_STATUS;
+};
 
 #define MAX_DLFW_PAGE_SIZE			4096	/*  @ page : 4k bytes */
 enum FIRMWARE_SOURCE {
@@ -193,7 +193,7 @@ enum FIRMWARE_SOURCE {
 u8 rtw_hal_data_init(struct adapter *padapter);
 void rtw_hal_data_deinit(struct adapter *padapter);
 
-void dump_chip_info(HAL_VERSION	ChipVersion);
+void dump_chip_info(struct HAL_VERSION	ChipVersion);
 
 u8 /* return the final channel plan decision */
 hal_com_config_channel_plan(

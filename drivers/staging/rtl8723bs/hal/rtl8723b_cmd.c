@@ -788,8 +788,8 @@ static void ConstructProbeRsp(struct adapter *padapter, u8 *pframe, u32 *pLength
 	/* retrieve SSID IE from cur_network->Ssid */
 	{
 		u8 *ssid_ie;
-		sint ssid_ielen;
-		sint ssid_ielen_diff;
+		signed int ssid_ielen;
+		signed int ssid_ielen_diff;
 		u8 buf[MAX_IE_SZ];
 		u8 *ies = pframe + sizeof(struct ieee80211_hdr_3addr);
 
@@ -832,7 +832,7 @@ void CheckFwRsvdPageContent(struct adapter *Adapter)
 {
 }
 
-static void rtl8723b_set_FwRsvdPage_cmd(struct adapter *padapter, PRSVDPAGE_LOC rsvdpageloc)
+static void rtl8723b_set_FwRsvdPage_cmd(struct adapter *padapter, struct RSVDPAGE_LOC *rsvdpageloc)
 {
 	u8 u1H2CRsvdPageParm[H2C_RSVDPAGE_LOC_LEN] = {0};
 
@@ -851,7 +851,7 @@ static void rtl8723b_set_FwRsvdPage_cmd(struct adapter *padapter, PRSVDPAGE_LOC 
 	FillH2CCmd8723B(padapter, H2C_8723B_RSVD_PAGE, H2C_RSVDPAGE_LOC_LEN, u1H2CRsvdPageParm);
 }
 
-static void rtl8723b_set_FwAoacRsvdPage_cmd(struct adapter *padapter, PRSVDPAGE_LOC rsvdpageloc)
+static void rtl8723b_set_FwAoacRsvdPage_cmd(struct adapter *padapter, struct RSVDPAGE_LOC *rsvdpageloc)
 {
 #ifdef CONFIG_WOWLAN
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
@@ -891,7 +891,7 @@ static void rtl8723b_set_FwAoacRsvdPage_cmd(struct adapter *padapter, PRSVDPAGE_
 
 #ifdef CONFIG_AP_WOWLAN
 static void rtl8723b_set_ap_wow_rsvdpage_cmd(
-	struct adapter *padapter, PRSVDPAGE_LOC rsvdpageloc
+	struct adapter *padapter, struct RSVDPAGE_LOC *rsvdpageloc
 )
 {
 	u8 header;
@@ -1183,11 +1183,6 @@ static void rtl8723b_set_FwWoWlanCtrl_Cmd(struct adapter *padapter, u8 bFuncEn)
 	u8 gpio_high_active = 0; /* 0: low active, 1: high active */
 	u8 magic_pkt = 0;
 
-#ifdef CONFIG_GPIO_WAKEUP
-	gpionum = WAKEUP_GPIO_IDX;
-	sdio_wakeup_enable = 0;
-#endif
-
 #ifdef CONFIG_PNO_SUPPORT
 	if (!ppwrpriv->wowlan_pno_enable)
 		magic_pkt = 1;
@@ -1284,7 +1279,7 @@ static void rtl8723b_set_FwAOACGlobalInfo_Cmd(struct adapter *padapter,  u8 grou
 }
 
 #ifdef CONFIG_PNO_SUPPORT
-static void rtl8723b_set_FwScanOffloadInfo_cmd(struct adapter *padapter, PRSVDPAGE_LOC rsvdpageloc, u8 enable)
+static void rtl8723b_set_FwScanOffloadInfo_cmd(struct adapter *padapter, struct RSVDPAGE_LOC *rsvdpageloc, u8 enable)
 {
 	u8 u1H2CScanOffloadInfoParm[H2C_SCAN_OFFLOAD_CTRL_LEN] = {0};
 
@@ -1358,9 +1353,6 @@ static void rtl8723b_set_FwAPWoWlanCtrl_Cmd(struct adapter *padapter, u8 bFuncEn
 	u8 gpionum = 0, gpio_dur = 0;
 	u8 gpio_high_active = 1; /* 0: low active, 1: high active */
 	u8 gpio_pulse = bFuncEn;
-#ifdef CONFIG_GPIO_WAKEUP
-	gpionum = WAKEUP_GPIO_IDX;
-#endif
 
 	DBG_871X("%s(): bFuncEn =%d\n", __func__, bFuncEn);
 
@@ -1444,7 +1436,7 @@ static void rtl8723b_set_FwRsvdPagePkt(
 	u8 TotalPageNum = 0, CurtPktPageNum = 0, RsvdPageNum = 0;
 	u16 BufIndex, PageSize = 128;
 	u32 TotalPacketLen, MaxRsvdPageBufSize = 0;
-	RSVDPAGE_LOC RsvdPageLoc;
+	struct RSVDPAGE_LOC RsvdPageLoc;
 #ifdef CONFIG_WOWLAN
 	u32 ARPLegnth = 0, GTKLegnth = 0;
 	u8 currentip[4];
@@ -1474,7 +1466,7 @@ static void rtl8723b_set_FwRsvdPagePkt(
 	}
 
 	ReservedPagePacket = pcmdframe->buf_addr;
-	memset(&RsvdPageLoc, 0, sizeof(RSVDPAGE_LOC));
+	memset(&RsvdPageLoc, 0, sizeof(struct RSVDPAGE_LOC));
 
 	/* 3 (1) beacon */
 	BufIndex = TxDescOffset;
@@ -1676,18 +1668,6 @@ static void rtl8723b_set_FwRsvdPagePkt(
 			rtl8723b_fill_fake_txdesc(padapter,
 				&ReservedPagePacket[BufIndex-TxDescLen],
 				ProbeReqLength, false, false, false);
-#ifdef CONFIG_PNO_SET_DEBUG
-	{
-			int gj;
-			printk("probe req pkt =>\n");
-			for (gj = 0; gj < ProbeReqLength+TxDescLen; gj++) {
-				printk(" %02x ", ReservedPagePacket[BufIndex-TxDescLen+gj]);
-				if ((gj+1)%8 == 0)
-					printk("\n");
-			}
-			printk(" <=end\n");
-	}
-#endif
 			CurtPktPageNum =
 				(u8)PageNum_128(TxDescLen + ProbeReqLength);
 
@@ -1698,18 +1678,6 @@ static void rtl8723b_set_FwRsvdPagePkt(
 			/* PNO INFO Page */
 			RsvdPageLoc.LocPNOInfo = TotalPageNum;
 			ConstructPnoInfo(padapter, &ReservedPagePacket[BufIndex-TxDescLen], &PNOLength);
-#ifdef CONFIG_PNO_SET_DEBUG
-	{
-			int gj;
-			printk("PNO pkt =>\n");
-			for (gj = 0; gj < PNOLength; gj++) {
-				printk(" %02x ", ReservedPagePacket[BufIndex-TxDescLen+gj]);
-				if ((gj + 1)%8 == 0)
-					printk("\n");
-			}
-			printk(" <=end\n");
-	}
-#endif
 
 			CurtPktPageNum = (u8)PageNum_128(PNOLength);
 			TotalPageNum += CurtPktPageNum;
@@ -1718,18 +1686,6 @@ static void rtl8723b_set_FwRsvdPagePkt(
 			/* SSID List Page */
 			RsvdPageLoc.LocSSIDInfo = TotalPageNum;
 			ConstructSSIDList(padapter, &ReservedPagePacket[BufIndex-TxDescLen], &SSIDLegnth);
-#ifdef CONFIG_PNO_SET_DEBUG
-	{
-			int gj;
-			printk("SSID list pkt =>\n");
-			for (gj = 0; gj < SSIDLegnth; gj++) {
-				printk(" %02x ", ReservedPagePacket[BufIndex-TxDescLen+gj]);
-				if ((gj + 1)%8 == 0)
-					printk("\n");
-			}
-			printk(" <=end\n");
-	}
-#endif
 			CurtPktPageNum = (u8)PageNum_128(SSIDLegnth);
 			TotalPageNum += CurtPktPageNum;
 			BufIndex += (CurtPktPageNum*PageSize);
@@ -1737,18 +1693,6 @@ static void rtl8723b_set_FwRsvdPagePkt(
 			/* Scan Info Page */
 			RsvdPageLoc.LocScanInfo = TotalPageNum;
 			ConstructScanInfo(padapter, &ReservedPagePacket[BufIndex-TxDescLen], &ScanInfoLength);
-#ifdef CONFIG_PNO_SET_DEBUG
-	{
-			int gj;
-			printk("Scan info pkt =>\n");
-			for (gj = 0; gj < ScanInfoLength; gj++) {
-				printk(" %02x ", ReservedPagePacket[BufIndex-TxDescLen+gj]);
-				if ((gj + 1)%8 == 0)
-					printk("\n");
-			}
-			printk(" <=end\n");
-	}
-#endif
 			CurtPktPageNum = (u8)PageNum_128(ScanInfoLength);
 			TotalPageNum += CurtPktPageNum;
 			BufIndex += (CurtPktPageNum*PageSize);
@@ -1829,7 +1773,7 @@ static void rtl8723b_set_AP_FwRsvdPagePkt(
 	u8 currentip[4];
 	u16 BufIndex, PageSize = 128;
 	u32 TotalPacketLen = 0, MaxRsvdPageBufSize = 0;
-	RSVDPAGE_LOC RsvdPageLoc;
+	struct RSVDPAGE_LOC RsvdPageLoc;
 
 	/* DBG_871X("%s---->\n", __func__); */
 	DBG_8192C("+" FUNC_ADPT_FMT ": iface_type =%d\n",
@@ -1851,7 +1795,7 @@ static void rtl8723b_set_AP_FwRsvdPagePkt(
 	}
 
 	ReservedPagePacket = pcmdframe->buf_addr;
-	memset(&RsvdPageLoc, 0, sizeof(RSVDPAGE_LOC));
+	memset(&RsvdPageLoc, 0, sizeof(struct RSVDPAGE_LOC));
 
 	/* 3 (1) beacon */
 	BufIndex = TxDescOffset;
@@ -2136,7 +2080,7 @@ static void SetFwRsvdPagePkt_BTCoex(struct adapter *padapter)
 	u8 TotalPageNum = 0, CurtPktPageNum = 0, RsvdPageNum = 0;
 	u16 BufIndex, PageSize;
 	u32 TotalPacketLen, MaxRsvdPageBufSize = 0;
-	RSVDPAGE_LOC RsvdPageLoc;
+	struct RSVDPAGE_LOC RsvdPageLoc;
 
 
 /* 	DBG_8192C("+" FUNC_ADPT_FMT "\n", FUNC_ADPT_ARG(padapter)); */
@@ -2156,7 +2100,7 @@ static void SetFwRsvdPagePkt_BTCoex(struct adapter *padapter)
 	}
 
 	ReservedPagePacket = pcmdframe->buf_addr;
-	memset(&RsvdPageLoc, 0, sizeof(RSVDPAGE_LOC));
+	memset(&RsvdPageLoc, 0, sizeof(struct RSVDPAGE_LOC));
 
 	/* 3 (1) beacon */
 	BufIndex = TxDescOffset;

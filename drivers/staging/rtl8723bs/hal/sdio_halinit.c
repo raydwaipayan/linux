@@ -42,63 +42,6 @@ static u8 CardEnable(struct adapter *padapter)
 	return ret;
 }
 
-#ifdef CONFIG_GPIO_WAKEUP
-/* we set it high under init and fw will */
-/* give us Low Pulse when host wake up */
-void HostWakeUpGpioClear(struct adapter *Adapter)
-{
-	u32 value32;
-
-	value32 = rtw_read32(Adapter, REG_GPIO_PIN_CTRL_2);
-
-	/* set GPIO 12 1 */
-	value32 |= BIT(12);/* 4+8 */
-	/* GPIO 12 out put */
-	value32 |= BIT(20);/* 4+16 */
-
-	rtw_write32(Adapter, REG_GPIO_PIN_CTRL_2, value32);
-} /* HostWakeUpGpioClear */
-
-void HalSetOutPutGPIO(struct adapter *padapter, u8 index, u8 OutPutValue)
-{
-	if (index <= 7) {
-		/* config GPIO mode */
-		rtw_write8(padapter, REG_GPIO_PIN_CTRL + 3, rtw_read8(padapter, REG_GPIO_PIN_CTRL + 3) & ~BIT(index));
-
-		/* config GPIO Sel */
-		/* 0: input */
-		/* 1: output */
-		rtw_write8(padapter, REG_GPIO_PIN_CTRL + 2, rtw_read8(padapter, REG_GPIO_PIN_CTRL + 2) | BIT(index));
-
-		/* set output value */
-		if (OutPutValue)
-			rtw_write8(padapter, REG_GPIO_PIN_CTRL + 1, rtw_read8(padapter, REG_GPIO_PIN_CTRL + 1) | BIT(index));
-		else
-			rtw_write8(padapter, REG_GPIO_PIN_CTRL + 1, rtw_read8(padapter, REG_GPIO_PIN_CTRL + 1) & ~BIT(index));
-	} else {
-		/* 88C Series: */
-		/* index: 11~8 transform to 3~0 */
-		/* 8723 Series: */
-		/* index: 12~8 transform to 4~0 */
-		index -= 8;
-
-		/* config GPIO mode */
-		rtw_write8(padapter, REG_GPIO_PIN_CTRL_2 + 3, rtw_read8(padapter, REG_GPIO_PIN_CTRL_2 + 3) & ~BIT(index));
-
-		/* config GPIO Sel */
-		/* 0: input */
-		/* 1: output */
-		rtw_write8(padapter, REG_GPIO_PIN_CTRL_2 + 2, rtw_read8(padapter, REG_GPIO_PIN_CTRL_2 + 2) | BIT(index));
-
-		/* set output value */
-		if (OutPutValue)
-			rtw_write8(padapter, REG_GPIO_PIN_CTRL_2 + 1, rtw_read8(padapter, REG_GPIO_PIN_CTRL_2 + 1) | BIT(index));
-		else
-			rtw_write8(padapter, REG_GPIO_PIN_CTRL_2 + 1, rtw_read8(padapter, REG_GPIO_PIN_CTRL_2 + 1) & ~BIT(index));
-	}
-}
-#endif
-
 static
 u8 _InitPowerOn_8723BS(struct adapter *padapter)
 {
@@ -189,10 +132,6 @@ u8 _InitPowerOn_8723BS(struct adapter *padapter)
 	value8 &= ~BIT(0); /*  BIT_SW_DPDT_SEL_DATA, DPDT_SEL default configuration */
 	rtw_write8(padapter, REG_PAD_CTRL1_8723B, value8);
 /* 	DBG_8192C("%s: REG_PAD_CTRL1(0x%x) = 0x%02X\n", __func__, REG_PAD_CTRL1_8723B, rtw_read8(padapter, REG_PAD_CTRL1_8723B)); */
-
-#ifdef CONFIG_GPIO_WAKEUP
-	HostWakeUpGpioClear(padapter);
-#endif
 
 	return _SUCCESS;
 }
@@ -1537,11 +1476,6 @@ static void SetHwReg8723BS(struct adapter *padapter, u8 variable, u8 *val)
 				rtw_read32(padapter, 0x2fc),
 				rtw_read32(padapter, 0x8c)
 			);
-#ifdef CONFIG_PNO_SET_DEBUG
-			DBG_871X("0x1b9: 0x%02x, 0x632: 0x%02x\n", rtw_read8(padapter, 0x1b9), rtw_read8(padapter, 0x632));
-			DBG_871X("0x4fc: 0x%02x, 0x4fd: 0x%02x\n", rtw_read8(padapter, 0x4fc), rtw_read8(padapter, 0x4fd));
-			DBG_871X("TXDMA STATUS: 0x%08x\n", rtw_read32(padapter, REG_TXDMA_STATUS));
-#endif
 
 			{
 				/*  2.  Set Disable WOWLAN H2C command. */
@@ -1609,10 +1543,6 @@ static void SetHwReg8723BS(struct adapter *padapter, u8 variable, u8 *val)
 				DBG_871X_LEVEL(_drv_always_, "Re-download Normal FW!\n");
 				SetFwRelatedForWoWLAN8723b(padapter, false);
 			}
-#ifdef CONFIG_GPIO_WAKEUP
-			DBG_871X_LEVEL(_drv_always_, "Set Wake GPIO to high for default.\n");
-			HalSetOutPutGPIO(padapter, WAKEUP_GPIO_IDX, 1);
-#endif
 
 			/*  5. Download reserved pages and report media status if needed. */
 			if (
@@ -1727,10 +1657,6 @@ static void SetHwReg8723BS(struct adapter *padapter, u8 variable, u8 *val)
 
 			SetFwRelatedForWoWLAN8723b(padapter, false);
 
-#ifdef CONFIG_GPIO_WAKEUP
-		DBG_871X_LEVEL(_drv_always_, "Set Wake GPIO to high for default.\n");
-		HalSetOutPutGPIO(padapter, WAKEUP_GPIO_IDX, 1);
-#endif /* CONFIG_GPIO_WAKEUP */
 		rtl8723b_set_FwJoinBssRpt_cmd(padapter, RT_MEDIA_CONNECT);
 		issue_beacon(padapter, 0);
 		break;

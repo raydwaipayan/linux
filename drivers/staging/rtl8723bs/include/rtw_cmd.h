@@ -53,11 +53,11 @@
 		/* u8 cmdthd_running; */
 		u8 stop_req;
 		struct adapter *padapter;
-		_mutex sctx_mutex;
+		struct mutex sctx_mutex;
 	};
 
 	struct	evt_priv {
-		_workitem c2h_wk;
+		struct work_struct c2h_wk;
 		bool c2h_wk_alive;
 		struct rtw_cbuf *c2h_queue;
 		#define C2H_QUEUE_MAX_LEN 10
@@ -265,7 +265,7 @@ Command-Event Mode
 #define RTW_SSID_SCAN_AMOUNT 9 /*  for WEXT_CSCAN_AMOUNT 9 */
 #define RTW_CHANNEL_SCAN_AMOUNT (14+37)
 struct sitesurvey_parm {
-	sint scan_mode;	/* active: 1, passive: 0 */
+	signed int scan_mode;	/* active: 1, passive: 0 */
 	u8 ssid_num;
 	u8 ch_num;
 	struct ndis_802_11_ssid ssid[RTW_SSID_SCAN_AMOUNT];

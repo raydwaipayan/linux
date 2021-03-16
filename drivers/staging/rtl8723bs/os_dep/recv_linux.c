@@ -30,7 +30,7 @@ void rtw_os_recv_resource_alloc(struct adapter *padapter, union recv_frame *prec
 /* free os related resource in union recv_frame */
 void rtw_os_recv_resource_free(struct recv_priv *precvpriv)
 {
-	sint i;
+	signed int i;
 	union recv_frame *precvframe;
 
 	precvframe = (union recv_frame *) precvpriv->precv_frame_buf;
@@ -53,10 +53,10 @@ void rtw_os_recvbuf_resource_free(struct adapter *padapter, struct recv_buf *pre
 	}
 }
 
-_pkt *rtw_os_alloc_msdu_pkt(union recv_frame *prframe, u16 nSubframe_Length, u8 *pdata)
+struct sk_buff *rtw_os_alloc_msdu_pkt(union recv_frame *prframe, u16 nSubframe_Length, u8 *pdata)
 {
 	u16 eth_type;
-	_pkt *sub_skb;
+	struct sk_buff *sub_skb;
 	struct rx_pkt_attrib *pattrib;
 
 	pattrib = &prframe->u.hdr.attrib;
@@ -95,7 +95,7 @@ _pkt *rtw_os_alloc_msdu_pkt(union recv_frame *prframe, u16 nSubframe_Length, u8 
 	return sub_skb;
 }
 
-void rtw_os_recv_indicate_pkt(struct adapter *padapter, _pkt *pkt, struct rx_pkt_attrib *pattrib)
+void rtw_os_recv_indicate_pkt(struct adapter *padapter, struct sk_buff *pkt, struct rx_pkt_attrib *pattrib)
 {
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 	int ret;
@@ -103,7 +103,7 @@ void rtw_os_recv_indicate_pkt(struct adapter *padapter, _pkt *pkt, struct rx_pkt
 	/* Indicate the packets to upper layer */
 	if (pkt) {
 		if (check_fwstate(pmlmepriv, WIFI_AP_STATE) == true) {
-			_pkt *pskb2 = NULL;
+			struct sk_buff *pskb2 = NULL;
 			struct sta_info *psta = NULL;
 			struct sta_priv *pstapriv = &padapter->stapriv;
 			int bmcast = IS_MCAST(pattrib->dst);
@@ -124,39 +124,23 @@ void rtw_os_recv_indicate_pkt(struct adapter *padapter, _pkt *pkt, struct rx_pkt
 
 					_rtw_xmit_entry(pkt, pnetdev);
 
-					if (bmcast && pskb2) {
+					if (bmcast && pskb2)
 						pkt = pskb2;
-						DBG_COUNTER(padapter->rx_logs.os_indicate_ap_mcast);
-					} else {
-						DBG_COUNTER(padapter->rx_logs.os_indicate_ap_forward);
+					else
 						return;
-					}
 				}
 			} else {
 				/*  to APself */
 				/* DBG_871X("to APSelf\n"); */
-				DBG_COUNTER(padapter->rx_logs.os_indicate_ap_self);
 			}
 		}
 
 		pkt->protocol = eth_type_trans(pkt, padapter->pnetdev);
 		pkt->dev = padapter->pnetdev;
 
-#ifdef CONFIG_TCP_CSUM_OFFLOAD_RX
-		if ((pattrib->tcpchk_valid == 1) && (pattrib->tcp_chkrpt == 1))
-			pkt->ip_summed = CHECKSUM_UNNECESSARY;
-		else
-			pkt->ip_summed = CHECKSUM_NONE;
-
-#else /* !CONFIG_TCP_CSUM_OFFLOAD_RX */
 		pkt->ip_summed = CHECKSUM_NONE;
-#endif /* CONFIG_TCP_CSUM_OFFLOAD_RX */
 
 		ret = rtw_netif_rx(padapter->pnetdev, pkt);
-		if (ret == NET_RX_SUCCESS)
-			DBG_COUNTER(padapter->rx_logs.os_netif_ok);
-		else
-			DBG_COUNTER(padapter->rx_logs.os_netif_err);
 	}
 }
 
@@ -209,7 +193,7 @@ void rtw_handle_tkip_mic_err(struct adapter *padapter, u8 bgroup)
 #ifdef CONFIG_AUTO_AP_MODE
 static void rtw_os_ksocket_send(struct adapter *padapter, union recv_frame *precv_frame)
 {
-	_pkt *skb = precv_frame->u.hdr.pkt;
+	struct sk_buff *skb = precv_frame->u.hdr.pkt;
 	struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
 	struct sta_info *psta = precv_frame->u.hdr.psta;
 
@@ -243,10 +227,8 @@ int rtw_recv_indicatepkt(struct adapter *padapter, union recv_frame *precv_frame
 {
 	struct recv_priv *precvpriv;
 	struct __queue	*pfree_recv_queue;
-	_pkt *skb;
+	struct sk_buff *skb;
 	struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
-
-	DBG_COUNTER(padapter->rx_logs.os_indicate);
 
 	precvpriv = &(padapter->recvpriv);
 	pfree_recv_queue = &(precvpriv->free_recv_queue);
@@ -293,7 +275,6 @@ _recv_indicatepkt_drop:
 	/* enqueue back to free_recv_queue */
 	rtw_free_recvframe(precv_frame, pfree_recv_queue);
 
-	DBG_COUNTER(padapter->rx_logs.os_indicate_err);
 	return _FAIL;
 }
 
